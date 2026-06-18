@@ -60,7 +60,6 @@ sed -e "s|__SCRIPT__|${SCRIPT}|g" \
 	-e "s|__POLL_SECONDS__|${POLL_SECONDS}|g" \
 	"${PLIST_SRC}" >"${PLIST_DST}"
 
-launchctl bootout "gui/${UID_NUM}/com.brandon.krisp-mic-lock" 2>/dev/null || true
 launchctl bootout "gui/${UID_NUM}/${LABEL}" 2>/dev/null || true
 launchctl bootstrap "gui/${UID_NUM}" "${PLIST_DST}"
 launchctl enable "gui/${UID_NUM}/${LABEL}" 2>/dev/null || true

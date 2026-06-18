@@ -1,98 +1,99 @@
 # mic-lock
 
-Dumb macOS script that keeps your system default **input** on the microphone you pick.
+Pin macOS system default **microphone input** to the device you choose.
 
-macOS loves switching your mic when you plug in headphones, connect AirPods, or wake from sleep. Some apps only follow system default. This runs a tiny shell script every N seconds via `launchd` and switches back if something else took over.
+macOS switches your input when you connect headphones, AirPods, USB gear, etc. Apps that only follow system default (many voice/PTT tools) then grab the wrong mic. This runs a shell script on an interval via `launchd` and switches back when something else took over.
 
-No app. No menu bar. One script and a plist.
+No app. No menu bar. `./install.sh` once.
 
-## Requirements
+---
 
-- macOS
-- [Homebrew](https://brew.sh/)
-- [switchaudio-osx](https://github.com/deweller/switchaudio-osx):
+## Quick install (human or agent)
+
+**Prerequisites:** macOS, [Homebrew](https://brew.sh/), [switchaudio-osx](https://github.com/deweller/switchaudio-osx).
 
 ```bash
 brew install switchaudio-osx
-```
-
-## Install
-
-```bash
 git clone https://github.com/BrandonFreeck/mic-lock.git
 cd mic-lock
 cp config.example config
 ```
 
-Edit `config` — set `TARGET_MIC` to the **exact** name from:
+List input devices and pick the exact name (casing matters):
 
 ```bash
 SwitchAudioSource -t input -a
+SwitchAudioSource -t input -c   # current default
 ```
 
-Examples people use this for:
+Edit `config` — set `TARGET_MIC` to that exact string. Common picks:
 
-- `Built-in Microphone` — block Bluetooth headset mics
-- `krisp microphone` — keep Krisp virtual mic as system default
-- Any USB mic you want pinned
+| Goal | Typical `TARGET_MIC` |
+|------|----------------------|
+| Block BT headset mic, use laptop mic | `MacBook Pro Microphone` or `Built-in Microphone` |
+| Pin a USB desk mic | e.g. `HyperX SoloCast` |
+| Pin a virtual/audio app mic | exact name from `-a` list |
 
-Then:
+Install (persists across reboots; no Login Items needed):
 
 ```bash
 ./install.sh
 ```
 
-That registers a LaunchAgent (`local.mic-lock`) and puts a `mic-lock` command in `~/bin` for instant manual enforcement.
+Done. Re-run `./install.sh` only if you change `config`.
 
-**Persists across reboots.** The agent plist lives in `~/Library/LaunchAgents/` — macOS loads it automatically every time you log in. `RunAtLoad` enforces once immediately; then every `POLL_SECONDS`. Install copies the script to `~/Library/Application Support/mic-lock/` so you can move or delete the git clone and it keeps working.
+**Uninstall:** `./uninstall.sh`
 
-Fire once: `./install.sh` and you're done unless you change `TARGET_MIC` (re-run install after editing `config`).
+**Force now (skip poll wait):** `mic-lock` (installed to `~/bin`)
 
-## Uninstall
-
-```bash
-./uninstall.sh
-```
+---
 
 ## Config
 
+Copy `config.example` → `config` (gitignored).
+
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `TARGET_MIC` | *(required)* | Exact input device name |
-| `POLL_SECONDS` | `15` | How often to check and fix |
+| `TARGET_MIC` | *(required)* | Exact input device name from `SwitchAudioSource -t input -a` |
+| `POLL_SECONDS` | `15` | Seconds between checks |
 
-`config` is gitignored — your machine, your mic name.
+---
+
+## Persistence
+
+- LaunchAgent: `local.mic-lock` in `~/Library/LaunchAgents/`
+- Loads automatically at every login/reboot
+- `RunAtLoad` — enforce once immediately; then every `POLL_SECONDS`
+- Script copied to `~/Library/Application Support/mic-lock/` — safe to delete the git clone after install
+
+---
 
 ## Logs
 
-| File | When it writes |
-|------|----------------|
-| `~/Library/Logs/mic-lock.log` | Only when it actually switched input |
-| `~/Library/Logs/mic-lock.launchd.log` | launchd stderr (errors) |
+| File | When |
+|------|------|
+| `~/Library/Logs/mic-lock.log` | Only when input was switched |
+| `~/Library/Logs/mic-lock.launchd.log` | launchd stderr |
 
-## Manual force
-
-Don't want to wait for the next poll?
-
-```bash
-mic-lock
-```
+---
 
 ## Limitations
 
-- **Apps already recording** may keep the wrong device until they reopen the mic stream.
-- **Poll delay** — default 15s between checks. Lower `POLL_SECONDS` if you care; raise it if you don't.
-- **Target must exist** — if your mic isn't connected (or Krisp isn't running), the script exits quietly and does nothing.
-- **Exact name match** — copy/paste from `SwitchAudioSource -t input -a`; casing matters.
+- Apps with an **already-open mic stream** may not switch until they reopen the mic.
+- **Poll delay** — up to `POLL_SECONDS` before correction; use `mic-lock` for immediate.
+- **Target must exist** — if the device isn't available, script exits quietly (no error loop).
+- **Exact name** — must match `SwitchAudioSource -t input -a` output exactly.
+
+---
 
 ## How it works
 
-1. `lock-mic.sh` finds `SwitchAudioSource` (including Homebrew paths launchd doesn't have on PATH).
-2. If `TARGET_MIC` isn't in the device list, exit.
-3. If current input ≠ target, switch and append one line to the log.
-4. `install.sh` copies the script to `~/Library/Application Support/mic-lock/` and registers a LaunchAgent plist (auto-starts at login).
+1. `lock-mic.sh` resolves `SwitchAudioSource` (Homebrew paths included — launchd PATH is minimal).
+2. If `TARGET_MIC` not in device list → exit 0.
+3. If current input ≠ target → switch + one log line.
+4. `install.sh` copies script to Application Support and registers the LaunchAgent.
 
-That's it.
+---
 
 ## License
 
