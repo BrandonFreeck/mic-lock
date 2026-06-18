@@ -1,0 +1,7 @@
+# Copy to `config` and edit before running install.sh:
+#   cp config.example config
+#
+# Exact name from: SwitchAudioSource -t input -a
+
+TARGET_MIC="Built-in Microphone"
+POLL_SECONDS=15
