@@ -42,7 +42,11 @@ Then:
 ./install.sh
 ```
 
-That registers a LaunchAgent (`local.mic-lock`), runs at login, and puts a `mic-lock` command in `~/bin` for instant manual enforcement.
+That registers a LaunchAgent (`local.mic-lock`) and puts a `mic-lock` command in `~/bin` for instant manual enforcement.
+
+**Persists across reboots.** The agent plist lives in `~/Library/LaunchAgents/` — macOS loads it automatically every time you log in. `RunAtLoad` enforces once immediately; then every `POLL_SECONDS`. Install copies the script to `~/Library/Application Support/mic-lock/` so you can move or delete the git clone and it keeps working.
+
+Fire once: `./install.sh` and you're done unless you change `TARGET_MIC` (re-run install after editing `config`).
 
 ## Uninstall
 
@@ -86,7 +90,7 @@ mic-lock
 1. `lock-mic.sh` finds `SwitchAudioSource` (including Homebrew paths launchd doesn't have on PATH).
 2. If `TARGET_MIC` isn't in the device list, exit.
 3. If current input ≠ target, switch and append one line to the log.
-4. `install.sh` writes a LaunchAgent plist with `TARGET_MIC` in the environment.
+4. `install.sh` copies the script to `~/Library/Application Support/mic-lock/` and registers a LaunchAgent plist (auto-starts at login).
 
 That's it.
 

@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT="${ROOT}/lock-mic.sh"
+INSTALL_DIR="${HOME}/Library/Application Support/mic-lock"
+SCRIPT="${INSTALL_DIR}/lock-mic.sh"
 PLIST_SRC="${ROOT}/com.local.mic-lock.plist"
 PLIST_DST="${HOME}/Library/LaunchAgents/local.mic-lock.plist"
 LABEL="local.mic-lock"
@@ -33,7 +34,9 @@ if [[ -z "$SAS" ]]; then
 	exit 1
 fi
 
-chmod +x "${ROOT}/lock-mic.sh" "${ROOT}/uninstall.sh"
+mkdir -p "${INSTALL_DIR}"
+cp "${ROOT}/lock-mic.sh" "${SCRIPT}"
+chmod +x "${SCRIPT}" "${ROOT}/uninstall.sh"
 
 WRAPPER="${HOME}/bin/mic-lock"
 mkdir -p "${HOME}/bin"
@@ -48,6 +51,7 @@ echo "Input devices:"
 "$SAS" -t input -a
 echo "Current input: $("$SAS" -t input -c)"
 echo "Will lock to: ${TARGET_MIC} (every ${POLL_SECONDS}s)"
+echo "Installed to: ${INSTALL_DIR} (survives moving/deleting the git clone)"
 
 mkdir -p "${HOME}/Library/LaunchAgents" "${HOME}/Library/Logs"
 sed -e "s|__SCRIPT__|${SCRIPT}|g" \
@@ -56,11 +60,11 @@ sed -e "s|__SCRIPT__|${SCRIPT}|g" \
 	-e "s|__POLL_SECONDS__|${POLL_SECONDS}|g" \
 	"${PLIST_SRC}" >"${PLIST_DST}"
 
-# Retire older krisp-mic-lock agent if present (personal workspace predecessor).
 launchctl bootout "gui/${UID_NUM}/com.brandon.krisp-mic-lock" 2>/dev/null || true
-
 launchctl bootout "gui/${UID_NUM}/${LABEL}" 2>/dev/null || true
 launchctl bootstrap "gui/${UID_NUM}" "${PLIST_DST}"
+launchctl enable "gui/${UID_NUM}/${LABEL}" 2>/dev/null || true
 
-echo "Installed ${LABEL}. Manual force: mic-lock"
+echo "Installed ${LABEL} — starts automatically at every login/reboot."
+echo "Manual force: mic-lock"
 echo "Switch log: ${HOME}/Library/Logs/mic-lock.log"
